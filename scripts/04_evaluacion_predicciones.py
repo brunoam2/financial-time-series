@@ -1,79 +1,65 @@
 import sys
 from pathlib import Path
 import pandas as pd
-import numpy as np
-from joblib import load
 
-# Ajustar ruta para poder importar paquetes del proyecto
+# Añadir la raíz del proyecto al path para importar módulos
 current_dir = Path(__file__).resolve().parent
 project_root = current_dir.parent
 sys.path.append(str(project_root))
 
-from src.config import (
-    PROCESSED_DATA_PATH,
-    TARGET_ASSET,
-    SELECTED_FEATURES,
-    WINDOW_SIZE,
-    MODEL_TYPE,
-    NORMALIZATION_METHOD,
-    TEST_START,
-    TEST_END,
-    MODEL_PATH,
+from src.config import PREDICTIONS_PATH, FIGURES_PATH, METRICS_PATH
+from src.utils.metrics import (
+    calculate_mean_absolute_error,
+    calculate_root_mean_squared_error,
+    calculate_mean_absolute_percentage_error,
 )
-from src.utils.preprocessing import (
-    fill_missing_values,
-    create_sliding_windows,
-    denormalize_value,
-)
-from src.utils.metrics import calculate_all_metrics
-from src.utils.visualization import plot_actual_vs_predicted, plot_residuals
+from src.utils.visualization import save_actual_vs_predicted, plot_metrics_comparison
 
 
 def main() -> None:
-    # Cargar datos procesados
-    data_file = PROCESSED_DATA_PATH / "combined_data.csv"
-    df = pd.read_csv(data_file, index_col=0, parse_dates=True)
+    """Compara todas las predicciones con los datos reales y genera métricas."""
+    FIGURES_PATH.mkdir(parents=True, exist_ok=True)
+    METRICS_PATH.mkdir(parents=True, exist_ok=True)
 
-    # Seleccionar columnas de interés
-    target_column = f"{TARGET_ASSET}_Close"
-    selected_columns = [target_column] + [col for col in SELECTED_FEATURES if col in df.columns]
-    df = df[selected_columns]
+    # Cargar todos los archivos de predicciones que tengan la estructura esperada
+    prediction_files = list(PREDICTIONS_PATH.glob("*.csv"))
+    if not prediction_files:
+        print(f"No se encontraron archivos de predicción en {PREDICTIONS_PATH}")
+        return
 
-    # Rellenar valores faltantes
-    df = fill_missing_values(df)
+    metrics = []
+    all_dataframes = []
 
-    # Crear ventanas deslizantes normalizadas
-    X_all, y_all, y_params = create_sliding_windows(df, window_size=WINDOW_SIZE)
-    dates = df.index[WINDOW_SIZE:]
+    for pred_file in prediction_files:
+        df = pd.read_csv(pred_file)
+        if "real" not in df.columns or "predicted" not in df.columns:
+            print(f"Omitiendo {pred_file.name} por falta de columnas necesarias.")
+            continue
+        model_name = pred_file.stem.split("_")[0]
+        df["date"] = pd.to_datetime(df["date"])
+        df.set_index("date", inplace=True)
+        real_series = df["real"]
+        pred_series = df["predicted"]
 
-    # Filtrar rango de validación
-    mask = (dates >= pd.to_datetime(TEST_START)) & (dates <= pd.to_datetime(TEST_END))
-    X_test, y_test = X_all[mask], y_all[mask]
-    y_params_test = [y_params[i] for i, valid in enumerate(mask) if valid]
-    test_dates = dates[mask]
+        mae = calculate_mean_absolute_error(real_series.values, pred_series.values)
+        rmse = calculate_root_mean_squared_error(real_series.values, pred_series.values)
+        mape = calculate_mean_absolute_percentage_error(real_series.values, pred_series.values)
 
-    # Cargar modelo entrenado
-    model_file = MODEL_PATH / f"{MODEL_TYPE.lower()}_{TARGET_ASSET}_w{WINDOW_SIZE}_{NORMALIZATION_METHOD}.pkl"
-    model = load(model_file)
+        metrics.append({"Model": model_name, "MAE": mae, "RMSE": rmse, "MAPE": mape})
 
-    # Obtener predicciones
-    predictions = model.predict(X_test)
+        fig_path = FIGURES_PATH / f"{model_name}_vs_real.png"
+        save_actual_vs_predicted(real_series, pred_series, fig_path, title=f"{model_name} vs Real")
 
-    # Desnormalizar resultados
-    y_test_denorm = np.array([denormalize_value(y, p) for y, p in zip(y_test, y_params_test)])
-    predictions_denorm = np.array([denormalize_value(y, p) for y, p in zip(predictions, y_params_test)])
+    if not metrics:
+        print("No se encontraron predicciones válidas para evaluar.")
+        return
 
-    # Calcular métricas
-    mae, rmse = calculate_all_metrics(y_test_denorm, predictions_denorm)
-    print(f"MAE: {mae}")
-    print(f"RMSE: {rmse}")
+    metrics_df = pd.DataFrame(metrics).set_index("Model")
+    metrics_file = METRICS_PATH / "comparativa_modelos.csv"
+    metrics_df.to_csv(metrics_file)
 
-    # Visualizaciones
-    actual_series = pd.Series(y_test_denorm, index=test_dates)
-    pred_series = pd.Series(predictions_denorm, index=test_dates)
-    plot_actual_vs_predicted(actual_series, pred_series)
-    residuals = actual_series - pred_series
-    plot_residuals(residuals)
+    metrics_fig = FIGURES_PATH / "comparativa_metricas.png"
+    plot_metrics_comparison(metrics_df, metrics_fig, title="Comparativa de métricas")
 
 
 if __name__ == "__main__":

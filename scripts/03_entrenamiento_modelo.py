@@ -139,3 +139,18 @@ print(f"RMSE: {rmse}")
 plot_actual_vs_predicted(pd.Series(y_val_denorm), pd.Series(predictions_denorm), title="Predicción vs Realidad (con datos desnormalizados)")
 residuals = pd.Series(y_val_denorm) - pd.Series(predictions_denorm)
 plot_residuals(residuals)
+
+import os
+
+predictions_dir = project_root / "results" / "predictions"
+predictions_dir.mkdir(parents=True, exist_ok=True)
+
+df_preds = pd.DataFrame({
+    "date": dates[val_mask],
+    "real": y_val_denorm,
+    "predicted": predictions_denorm
+})
+model_output_name = MODEL_TYPE.lower()
+output_file = predictions_dir / f"{model_output_name}_{TARGET_COLUMN}.csv"
+df_preds.to_csv(output_file, index=False)
+print(f"Guardadas predicciones y valores reales en {output_file}")

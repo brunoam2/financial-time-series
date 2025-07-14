@@ -15,7 +15,7 @@ TEST_END = "2022-12-31"
 # ===================== Configuración del experimento =====================
 WINDOW_SIZE = 30
 NORMALIZATION_METHOD = "minmax"
-MODEL_TYPE = "arima" 
+MODEL_TYPE = "transformer" 
 SEED = 42
 TEST_SIZE = 0.2
 EARLY_STOPPING_PATIENCE = 10
