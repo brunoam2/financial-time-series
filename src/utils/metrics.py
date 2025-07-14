@@ -26,9 +26,8 @@ def calculate_mean_absolute_percentage_error(true_values: np.ndarray, predicted_
 
 
 # Nueva función para calcular todas las métricas a la vez
-def calculate_all_metrics(true_values: np.ndarray, predicted_values: np.ndarray) -> tuple[float, float, float]:
-    """Calcula MAE, RMSE y MAPE en una sola llamada."""
+def calculate_all_metrics(true_values: np.ndarray, predicted_values: np.ndarray) -> tuple[float, float]:
+    """Calcula MAE y RMSE en una sola llamada."""
     mae = calculate_mean_absolute_error(true_values, predicted_values)
     rmse = calculate_root_mean_squared_error(true_values, predicted_values)
-    mape = calculate_mean_absolute_percentage_error(true_values, predicted_values)
-    return mae, rmse, mape
+    return mae, rmse
