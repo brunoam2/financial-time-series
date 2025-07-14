@@ -25,7 +25,6 @@ tf.random.set_seed(SEED)
 
 from src.config import (
     PROCESSED_DATA_PATH,
-    TARGET_ASSET,
     SELECTED_FEATURES,
     WINDOW_SIZE,
     MODEL_TYPE,
@@ -33,6 +32,8 @@ from src.config import (
     VALIDATION_START,
     VALIDATION_END,
     MODEL_PATH,
+    SEED,
+    TARGET_COLUMN,
 )
 from src.utils.preprocessing import fill_missing_values, create_sliding_windows, denormalize_value
 from src.pipeline.train import train_model
@@ -41,7 +42,12 @@ from src.utils.metrics import calculate_all_metrics
 data_file = PROCESSED_DATA_PATH / "combined_data.csv"
 df = pd.read_csv(data_file, index_col=0, parse_dates=True)
 
-target_column = f"{TARGET_ASSET}_Close"
+print(df.head())
+print(df.describe())
+
+from src.config import TARGET_COLUMN
+target_column = TARGET_COLUMN
+
 selected_columns = [target_column] + [col for col in SELECTED_FEATURES if col in df.columns]
 df = df[selected_columns]
 
@@ -57,14 +63,72 @@ X_train, y_train = X_all[train_mask], y_all[train_mask]
 X_val, y_val = X_all[val_mask], y_all[val_mask]
 y_params_val = [y_params[i] for i, valid in enumerate(val_mask) if valid]
 
-model_path = train_model(model_name=MODEL_TYPE.lower(), X_train=X_train, y_train=y_train, X_val=X_val, y_val=y_val)
+if MODEL_TYPE.lower() == "arima":
+    X_train_series = df[target_column].copy()
+    X_train_series = X_train_series.iloc[WINDOW_SIZE:]
+    X_train_series = X_train_series[train_mask].copy()
+    X_train_series.index.freq = pd.infer_freq(X_train_series.index)
+    print(X_train_series.head())
+    model_path = train_model(
+        model_name="arima",
+        X_train=X_train_series,
+        y_train=None,
+        X_val=None,
+        y_val=None
+    )
+
+elif MODEL_TYPE.lower() == "prophet":
+    prophet_df = df[[target_column]].copy()
+    prophet_df = prophet_df.reset_index().rename(columns={"index": "ds", target_column: "y"})
+    prophet_df = prophet_df.iloc[WINDOW_SIZE:]
+    prophet_df = prophet_df[train_mask].copy()
+    print(prophet_df.head())
+    model_path = train_model(
+        model_name="prophet",
+        X_train=prophet_df,
+        y_train=None,
+        X_val=None,
+        y_val=None
+    )
+
+else:
+    model_path = train_model(
+        model_name=MODEL_TYPE.lower(),
+        X_train=X_train,
+        y_train=y_train,
+        X_val=X_val,
+        y_val=y_val
+    )
 
 model = load(model_path)
+
+# Mostrar resumen del modelo ARIMA si aplica
+if MODEL_TYPE.lower() == "arima":
+    print(model.model.summary())
+    import matplotlib.pyplot as plt
+    residuals = model.model.resid
+    plt.figure(figsize=(10, 4))
+    plt.plot(residuals)
+    plt.title("Residuos del modelo ARIMA")
+    plt.tight_layout()
+    plt.show()
+
+print(type(X_val))
+print(X_val[:5])
+
 predictions = model.predict(X_val)
 
- 
+y_val = np.array(y_val)
+predictions = np.array(predictions)
+
+if len(y_val) != len(predictions):
+    raise ValueError(f"Length mismatch: y_val has length {len(y_val)} but predictions has length {len(predictions)}")
+
 y_val_denorm = np.array([denormalize_value(y, p) for y, p in zip(y_val, y_params_val)])
 predictions_denorm = np.array([denormalize_value(y, p) for y, p in zip(predictions, y_params_val)])
+
+print("y_val_denorm stats:", pd.Series(y_val_denorm).describe())
+print("predictions_denorm stats:", pd.Series(predictions_denorm).describe())
 
 mae, rmse = calculate_all_metrics(y_val_denorm, predictions_denorm)
 
