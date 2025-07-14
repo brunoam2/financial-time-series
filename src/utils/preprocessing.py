@@ -5,15 +5,13 @@ from src.config import NORMALIZATION_METHOD, TARGET_COLUMN
 
 
 def fill_missing_values(dataframe: pd.DataFrame, method: str = "ffill") -> pd.DataFrame:
-    # Rellena valores faltantes usando el método especificado
     if method == "ffill":
         return dataframe.ffill()
-    elif method == "bfill":
+    if method == "bfill":
         return dataframe.bfill()
-    elif method == "drop":
+    if method == "drop":
         return dataframe.dropna()
-    else:
-        raise ValueError(f"Método de imputación no soportado: {method}")
+    raise ValueError(f"Método de imputación no soportado: {method}")
 
 
 def normalize_values(dataframe: pd.DataFrame, method: str = "standard") -> pd.DataFrame:
