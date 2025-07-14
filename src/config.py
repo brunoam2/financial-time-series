@@ -2,7 +2,7 @@ from pathlib import Path
 
 # ===================== Configuración de los activos =====================
 TICKERS = ["SPY", "GLD", "TLT", "^VIX", "DX-Y.NYB"]
-TARGET_ASSET = "SPY"
+TARGET_COLUMN = "SPY_LogReturn"
 
 # ===================== Configuración de fechas =====================
 TRAIN_START = "2018-01-01"
@@ -15,7 +15,7 @@ TEST_END = "2022-12-31"
 # ===================== Configuración del experimento =====================
 WINDOW_SIZE = 30
 NORMALIZATION_METHOD = "minmax"
-MODEL_TYPE = "lstm"
+MODEL_TYPE = "arima" 
 SEED = 42
 TEST_SIZE = 0.2
 EARLY_STOPPING_PATIENCE = 10

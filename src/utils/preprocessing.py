@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
-from src.config import NORMALIZATION_METHOD, TARGET_ASSET
+from src.config import NORMALIZATION_METHOD, TARGET_COLUMN
 
 
 def fill_missing_values(dataframe: pd.DataFrame, method: str = "ffill") -> pd.DataFrame:
@@ -27,6 +27,13 @@ def normalize_values(dataframe: pd.DataFrame, method: str = "standard") -> pd.Da
 def create_sliding_windows(df: pd.DataFrame, window_size: int) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Genera secuencias y etiquetas usando una ventana deslizante normalizada por ventana.
 
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame con los datos de entrada.
+    window_size : int
+        Tamaño de la ventana deslizante.
+
     Returns
     -------
     tuple[np.ndarray, np.ndarray, np.ndarray]
@@ -37,8 +44,6 @@ def create_sliding_windows(df: pd.DataFrame, window_size: int) -> tuple[np.ndarr
     if window_size <= 0 or len(df) <= window_size:
         raise ValueError("window_size inválido para el DataFrame")
 
-    target_column = f"{TARGET_ASSET}_Close"
-
     X, y, y_params = [], [], []
     for start in range(len(df) - window_size):
         end = start + window_size
@@ -46,20 +51,10 @@ def create_sliding_windows(df: pd.DataFrame, window_size: int) -> tuple[np.ndarr
         window_norm = normalize_values(window, method=NORMALIZATION_METHOD)
         X.append(window_norm.values)
 
-        prices = window[target_column].values
-        log_returns = np.log(prices[1:] / prices[:-1])
-        y_value = np.log(df[target_column].iloc[end] / df[target_column].iloc[end - 1])
+        y_value = df[TARGET_COLUMN].iloc[end]
 
-        if NORMALIZATION_METHOD == "standard":
-            mean, std = log_returns.mean(), log_returns.std()
-            y_params.append((mean, std))
-            y.append((y_value - mean) / std if std else 0.0)
-
-        else:
-            min_val, max_val = log_returns.min(), log_returns.max()
-            rng = max_val - min_val
-            y_params.append((min_val, max_val))
-            y.append((y_value - min_val) / rng if rng else 0.0)
+        y_params.append((0, 1))  # Placeholder since y is not normalized
+        y.append(y_value)
 
     return np.array(X), np.array(y), np.array(y_params)
 
