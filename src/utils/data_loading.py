@@ -4,7 +4,7 @@ from typing import Iterable, Optional, Union
 import pandas as pd
 import yfinance as yf
 
-from ..config import PROCESSED_DATA_PATH, RAW_DATA_PATH
+from ..config import RAW_DATA_PATH
 
 
 def download_yahoo_data(
@@ -16,12 +16,7 @@ def download_yahoo_data(
     save: bool = True,
     destination_directory: Optional[Path] = None,
 ) -> pd.DataFrame:
-    """Descarga datos de Yahoo Finance para uno o varios tickers y los combina.
-
-    Las columnas resultantes estarán prefijadas por el nombre del ticker.
-    Si ``save`` es ``True`` el DataFrame combinado se guarda en
-    ``RAW_DATA_PATH/combined_data.csv``.
-    """
+    """Descarga datos de Yahoo Finance y devuelve un solo DataFrame."""
 
     tickers_list = [tickers] if isinstance(tickers, str) else list(tickers)
 
@@ -38,28 +33,21 @@ def download_yahoo_data(
         raise ValueError(f"No se encontraron datos para {tickers_list}.")
 
     if isinstance(data.columns, pd.MultiIndex):
-        # Asegurar que nivel 0 = ticker, nivel 1 = variable
         if data.columns.names != ["Ticker", "Attributes"]:
             data.columns = data.columns.swaplevel()
-
-        # Convertir columnas MultiIndex a columnas simples
-        selected_cols = []
-        for ticker in tickers_list:
-            for attribute in ["Close", "Volume"]:
-                if (ticker, attribute) in data.columns:
-                    # Excluir volumen si es todo ceros
-                    if attribute == "Volume" and data[(ticker, attribute)].sum() == 0:
-                        continue
-                    selected_cols.append((ticker, attribute))
-        selected = data[selected_cols]
-        selected.columns = [f"{ticker}_{attribute.replace(' ', '')}" for ticker, attribute in selected.columns]
-        data = selected
+        cols = [
+            (t, a)
+            for t in tickers_list
+            for a in ("Close", "Volume")
+            if (t, a) in data.columns and not (a == "Volume" and data[(t, a)].sum() == 0)
+        ]
+        data = data[cols]
+        data.columns = [f"{t}_{a.replace(' ', '')}" for t, a in data.columns]
     else:
         raise ValueError("Se esperaba un MultiIndex en las columnas descargadas.")
 
     if not isinstance(data.index, pd.DatetimeIndex):
         raise ValueError("El índice del DataFrame descargado no es DatetimeIndex.")
-
     data.index.name = "Date"
 
     if save:

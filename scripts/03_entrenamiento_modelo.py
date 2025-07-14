@@ -1,27 +1,13 @@
 import sys
 from pathlib import Path
 from joblib import load
-
-
-import numpy as np
 import random
+import numpy as np
+import pandas as pd
 import tensorflow as tf
 
-import pandas as pd
-
-current_dir = Path(__file__).resolve().parent
-project_root = current_dir.parent
-sys.path.append(str(project_root))
-
-from src.config import SEED
-
-# Importar función de visualización
-from src.utils.visualization import plot_actual_vs_predicted, plot_residuals
-
-# Establecer la semilla para reproducibilidad
-random.seed(SEED)
-np.random.seed(SEED)
-tf.random.set_seed(SEED)
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+sys.path.append(str(PROJECT_ROOT))
 
 from src.config import (
     PROCESSED_DATA_PATH,
@@ -31,126 +17,61 @@ from src.config import (
     NORMALIZATION_METHOD,
     VALIDATION_START,
     VALIDATION_END,
-    MODEL_PATH,
+    PREDICTIONS_PATH,
     SEED,
     TARGET_COLUMN,
 )
 from src.utils.preprocessing import fill_missing_values, create_sliding_windows, denormalize_value
 from src.pipeline.train import train_model
 from src.utils.metrics import calculate_all_metrics
+from src.utils.visualization import plot_actual_vs_predicted, plot_residuals
 
-data_file = PROCESSED_DATA_PATH / "combined_data.csv"
-df = pd.read_csv(data_file, index_col=0, parse_dates=True)
+random.seed(SEED)
+np.random.seed(SEED)
+tf.random.set_seed(SEED)
 
-print(df.head())
-print(df.describe())
 
-from src.config import TARGET_COLUMN
-target_column = TARGET_COLUMN
+def main() -> None:
+    df = pd.read_csv(PROCESSED_DATA_PATH / "combined_data.csv", index_col=0, parse_dates=True)
+    cols = [TARGET_COLUMN] + [c for c in SELECTED_FEATURES if c in df.columns]
+    df = fill_missing_values(df[cols])
 
-selected_columns = [target_column] + [col for col in SELECTED_FEATURES if col in df.columns]
-df = df[selected_columns]
+    X_all, y_all, params = create_sliding_windows(df, WINDOW_SIZE)
+    dates = df.index[WINDOW_SIZE:]
+    val_mask = (dates >= pd.to_datetime(VALIDATION_START)) & (dates <= pd.to_datetime(VALIDATION_END))
 
-df = fill_missing_values(df)
+    X_train, y_train = X_all[~val_mask], y_all[~val_mask]
+    X_val, y_val = X_all[val_mask], y_all[val_mask]
+    params_val = params[val_mask]
 
-X_all, y_all, y_params = create_sliding_windows(df, window_size=WINDOW_SIZE)
-dates = df.index[WINDOW_SIZE:]
+    model_type = MODEL_TYPE.lower()
+    if model_type == "arima":
+        series = df[TARGET_COLUMN].iloc[WINDOW_SIZE:][~val_mask]
+        series.index.freq = pd.infer_freq(series.index)
+        model_path = train_model("arima", series, None, None, None)
+    elif model_type == "prophet":
+        prophet_df = df[[TARGET_COLUMN]].reset_index().rename(columns={"index": "ds", TARGET_COLUMN: "y"})
+        prophet_df = prophet_df.iloc[WINDOW_SIZE:][~val_mask]
+        model_path = train_model("prophet", prophet_df, None, None, None)
+    else:
+        model_path = train_model(model_type, X_train, y_train, X_val, y_val)
 
-val_mask = (dates >= pd.to_datetime(VALIDATION_START)) & (dates <= pd.to_datetime(VALIDATION_END))
-train_mask = dates < pd.to_datetime(VALIDATION_START)
+    model = load(model_path)
+    preds = model.predict(X_val)
 
-X_train, y_train = X_all[train_mask], y_all[train_mask]
-X_val, y_val = X_all[val_mask], y_all[val_mask]
-y_params_val = [y_params[i] for i, valid in enumerate(val_mask) if valid]
+    real = np.array([denormalize_value(v, p) for v, p in zip(y_val, params_val)])
+    preds = np.array([denormalize_value(v, p) for v, p in zip(preds, params_val)])
 
-if MODEL_TYPE.lower() == "arima":
-    X_train_series = df[target_column].copy()
-    X_train_series = X_train_series.iloc[WINDOW_SIZE:]
-    X_train_series = X_train_series[train_mask].copy()
-    X_train_series.index.freq = pd.infer_freq(X_train_series.index)
-    print(X_train_series.head())
-    model_path = train_model(
-        model_name="arima",
-        X_train=X_train_series,
-        y_train=None,
-        X_val=None,
-        y_val=None
-    )
+    mae, rmse = calculate_all_metrics(real, preds)
+    print(f"MAE: {mae}\nRMSE: {rmse}")
 
-elif MODEL_TYPE.lower() == "prophet":
-    prophet_df = df[[target_column]].copy()
-    prophet_df = prophet_df.reset_index().rename(columns={"index": "ds", target_column: "y"})
-    prophet_df = prophet_df.iloc[WINDOW_SIZE:]
-    prophet_df = prophet_df[train_mask].copy()
-    print(prophet_df.head())
-    model_path = train_model(
-        model_name="prophet",
-        X_train=prophet_df,
-        y_train=None,
-        X_val=None,
-        y_val=None
-    )
+    plot_actual_vs_predicted(pd.Series(real, index=dates[val_mask]), pd.Series(preds, index=dates[val_mask]))
+    plot_residuals(pd.Series(real - preds, index=dates[val_mask]))
 
-else:
-    model_path = train_model(
-        model_name=MODEL_TYPE.lower(),
-        X_train=X_train,
-        y_train=y_train,
-        X_val=X_val,
-        y_val=y_val
-    )
+    PREDICTIONS_PATH.mkdir(parents=True, exist_ok=True)
+    out_file = PREDICTIONS_PATH / f"{model_type}_{TARGET_COLUMN}.csv"
+    pd.DataFrame({"date": dates[val_mask], "real": real, "predicted": preds}).to_csv(out_file, index=False)
 
-model = load(model_path)
 
-# Mostrar resumen del modelo ARIMA si aplica
-if MODEL_TYPE.lower() == "arima":
-    print(model.model.summary())
-    import matplotlib.pyplot as plt
-    residuals = model.model.resid
-    plt.figure(figsize=(10, 4))
-    plt.plot(residuals)
-    plt.title("Residuos del modelo ARIMA")
-    plt.tight_layout()
-    plt.show()
-
-print(type(X_val))
-print(X_val[:5])
-
-predictions = model.predict(X_val)
-
-y_val = np.array(y_val)
-predictions = np.array(predictions)
-
-if len(y_val) != len(predictions):
-    raise ValueError(f"Length mismatch: y_val has length {len(y_val)} but predictions has length {len(predictions)}")
-
-y_val_denorm = np.array([denormalize_value(y, p) for y, p in zip(y_val, y_params_val)])
-predictions_denorm = np.array([denormalize_value(y, p) for y, p in zip(predictions, y_params_val)])
-
-print("y_val_denorm stats:", pd.Series(y_val_denorm).describe())
-print("predictions_denorm stats:", pd.Series(predictions_denorm).describe())
-
-mae, rmse = calculate_all_metrics(y_val_denorm, predictions_denorm)
-
-print(f"MAE: {mae}")
-print(f"RMSE: {rmse}")
-
-# Visualización de predicciones vs realidad (con datos desnormalizados)
-plot_actual_vs_predicted(pd.Series(y_val_denorm), pd.Series(predictions_denorm), title="Predicción vs Realidad (con datos desnormalizados)")
-residuals = pd.Series(y_val_denorm) - pd.Series(predictions_denorm)
-plot_residuals(residuals)
-
-import os
-
-predictions_dir = project_root / "results" / "predictions"
-predictions_dir.mkdir(parents=True, exist_ok=True)
-
-df_preds = pd.DataFrame({
-    "date": dates[val_mask],
-    "real": y_val_denorm,
-    "predicted": predictions_denorm
-})
-model_output_name = MODEL_TYPE.lower()
-output_file = predictions_dir / f"{model_output_name}_{TARGET_COLUMN}.csv"
-df_preds.to_csv(output_file, index=False)
-print(f"Guardadas predicciones y valores reales en {output_file}")
+if __name__ == "__main__":
+    main()

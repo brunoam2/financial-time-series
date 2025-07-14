@@ -2,10 +2,8 @@ import sys
 from pathlib import Path
 import pandas as pd
 
-# Añadir la raíz del proyecto al path para importar módulos
-current_dir = Path(__file__).resolve().parent
-project_root = current_dir.parent
-sys.path.append(str(project_root))
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+sys.path.append(str(PROJECT_ROOT))
 
 from src.config import PREDICTIONS_PATH, FIGURES_PATH, METRICS_PATH
 from src.utils.metrics import (
@@ -28,7 +26,6 @@ def main() -> None:
         return
 
     metrics = []
-    all_dataframes = []
 
     for pred_file in prediction_files:
         df = pd.read_csv(pred_file)
