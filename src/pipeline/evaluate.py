@@ -40,8 +40,7 @@ def evaluate_model(model_name: str, series_ticker: str) -> dict[str, float]:
     # Evalúa las predicciones
     metrics = {
         "MAE": calculate_mean_absolute_error(y_test, predictions),
-        "RMSE": calculate_root_mean_squared_error(y_test, predictions),
-        "MAPE": calculate_mean_absolute_percentage_error(y_test, predictions)
+        "RMSE": calculate_root_mean_squared_error(y_test, predictions)
     }
 
     return metrics

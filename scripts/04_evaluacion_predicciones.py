@@ -64,10 +64,9 @@ def main() -> None:
     predictions_denorm = np.array([denormalize_value(y, p) for y, p in zip(predictions, y_params_test)])
 
     # Calcular métricas
-    mae, rmse, mape = calculate_all_metrics(y_test_denorm, predictions_denorm)
+    mae, rmse = calculate_all_metrics(y_test_denorm, predictions_denorm)
     print(f"MAE: {mae}")
     print(f"RMSE: {rmse}")
-    print(f"MAPE (%): {mape}")
 
     # Visualizaciones
     actual_series = pd.Series(y_test_denorm, index=test_dates)
