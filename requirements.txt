@@ -1,0 +1,34 @@
+# Manipulación y análisis de datos
+pandas
+numpy
+scipy
+
+# Visualización
+matplotlib
+seaborn
+plotly
+
+# Modelado clásico y machine learning
+scikit-learn
+xgboost
+lightgbm
+statsmodels
+
+# Deep learning
+tensorflow
+
+# Modelado de series temporales
+pmdarima
+prophet
+ta
+
+# Acceso a datos financieros
+yfinance
+pandas-datareader
+fredapi
+requests
+
+# Utilidades generales
+joblib
+typing-extensions
+ipykernel
