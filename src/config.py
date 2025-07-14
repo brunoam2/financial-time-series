@@ -14,7 +14,6 @@ TEST_END = "2024-12-31"
 
 # ===================== Configuración del experimento =====================
 WINDOW_SIZE = 20
-NORMALIZATION_METHOD = "minmax"
 MODEL_TYPE = "lstm" 
 SEED = 42
 EARLY_STOPPING_PATIENCE = 10
@@ -24,25 +23,13 @@ EARLY_STOPPING_MIN_DELTA = 0.0
 SHORT_WINDOW = 10
 LONG_WINDOW = 30
 
-# ===================== Variables seleccionadas para entrenamiento =====================
-SELECTED_FEATURES = [
-    "GLD_Close",
-    "TLT_Volume",
-    "TLT_Close",
-    "TLT_Volatility",
-    "DX-Y.NYB_MACD_signal",
-    "DX-Y.NYB_Close",
-    "SPY_MACD_signal",
-    "DX-Y.NYB_MA_Relative",
-    "DX-Y.NYB_RelativePriceSMA30",
-    "SPY_MA_Relative"
-]
 # ===================== Definición de rutas =====================
 # Ruta base del proyecto
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Directorios de datos
 DATA_PATH = BASE_DIR / "data"
+PROCESSED_DATA_PATH = DATA_PATH / "processed"
 
 # Directorios de resultados
 RESULTS_PATH = BASE_DIR / "results"

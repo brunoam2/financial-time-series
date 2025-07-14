@@ -18,6 +18,6 @@ def compute_all_technical_indicators(df: pd.DataFrame, tickers: list[str]) -> pd
         indicators[f"{ticker}_RelativePriceSMA{LONG_WINDOW}"] = (df[price_col] - sma_long) / sma_long
         indicators[f"{ticker}_MA_Crossover"] = (sma_short - sma_long) / sma_long
         indicators[f"{ticker}_Volatility"] = df[price_col].rolling(window=21).std() / df[price_col]
-        indicators[f"{ticker}_RSI"] = ta.momentum.RSIIndicator(close=df[price_col], window=14).rsi()
+        indicators[f"{ticker}_RSI"] = ta.momentum.RSIIndicator(close=df[price_col], window=14).rsi() / 100
 
     return indicators
