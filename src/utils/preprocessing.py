@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
-from src.config import TARGET_COLUMN
+from src.config import TARGET_COLUMN, TARGET_SCALER
 
 
 def normalize_dataframe_columns(dataframe: pd.DataFrame, method: str = "standard") -> tuple[pd.DataFrame, dict[str, tuple]]:
@@ -81,6 +81,7 @@ def create_sliding_windows(dataframe: pd.DataFrame, window_size: int, normalizat
                 window_data[price_columns], method="minmax"
             )
             normalized_window[price_columns] = normalized_prices
+            normalization_params.update(price_params)
 
         if technical_columns:
             normalized_tech, tech_params = normalize_dataframe_columns(
@@ -93,8 +94,8 @@ def create_sliding_windows(dataframe: pd.DataFrame, window_size: int, normalizat
         if TARGET_COLUMN not in normalization_params:
             raise ValueError(f"No se encontraron parámetros de normalización para {TARGET_COLUMN}.")
 
-        target_parameters = return_params[TARGET_COLUMN]
-        target_normalized = normalize_value(target_value, target_parameters, "standard")
+        target_parameters = normalization_params[TARGET_COLUMN]
+        target_normalized = normalize_value(target_value, target_parameters, TARGET_SCALER)
 
         features_sequences.append(normalized_window.values)
         target_values.append(target_normalized)

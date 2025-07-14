@@ -2,7 +2,7 @@ from pathlib import Path
 
 # ===================== Configuración de los activos =====================
 TICKERS = ["SPY", "GLD", "TLT", "^VIX", "DX-Y.NYB"]
-TARGET_COLUMN = "SPY_Return"
+TARGET_COLUMN = "SPY_Close"
 
 # ===================== Configuración de fechas =====================
 TRAIN_START = "2005-06-01"
@@ -14,8 +14,10 @@ TEST_END = "2024-12-31"
 
 # ===================== Configuración del experimento =====================
 WINDOW_SIZE = 20
-MODEL_TYPE = "lstm" 
+MODEL_TYPE = "prophet" 
 SEED = 42
+
+# ===================== Configuración de entrenamiento =====================
 EARLY_STOPPING_PATIENCE = 10
 EARLY_STOPPING_MIN_DELTA = 0.0
 
@@ -38,6 +40,11 @@ PREDICTIONS_PATH = RESULTS_PATH / "predictions"
 METRICS_PATH = RESULTS_PATH / "metrics"
 
 # Directorio para modelos entrenados
+
 MODEL_PATH = RESULTS_PATH / "models"
+
+# ===================== Escalado de la variable objetivo =====================
+# Si la variable objetivo termina en 'Close', se utiliza min-max. Si no, se usa estándar.
+TARGET_SCALER = "minmax" if TARGET_COLUMN.endswith("Close") else "standard"
 
 
