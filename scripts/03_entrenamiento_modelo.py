@@ -66,11 +66,10 @@ predictions = model.predict(X_val)
 y_val_denorm = np.array([denormalize_value(y, p) for y, p in zip(y_val, y_params_val)])
 predictions_denorm = np.array([denormalize_value(y, p) for y, p in zip(predictions, y_params_val)])
 
-mae, rmse, mape = calculate_all_metrics(y_val_denorm, predictions_denorm)
+mae, rmse = calculate_all_metrics(y_val_denorm, predictions_denorm)
 
 print(f"MAE: {mae}")
 print(f"RMSE: {rmse}")
-print(f"MAPE (%): {mape}")
 
 # Visualización de predicciones vs realidad (con datos desnormalizados)
 plot_actual_vs_predicted(pd.Series(y_val_denorm), pd.Series(predictions_denorm), title="Predicción vs Realidad (con datos desnormalizados)")

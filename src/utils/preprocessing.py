@@ -46,16 +46,17 @@ def create_sliding_windows(df: pd.DataFrame, window_size: int) -> tuple[np.ndarr
         window_norm = normalize_values(window, method=NORMALIZATION_METHOD)
         X.append(window_norm.values)
 
-        target_seq = window[target_column].values
-        y_value = df[target_column].iloc[end]
+        prices = window[target_column].values
+        log_returns = np.log(prices[1:] / prices[:-1])
+        y_value = np.log(df[target_column].iloc[end] / df[target_column].iloc[end - 1])
 
         if NORMALIZATION_METHOD == "standard":
-            mean, std = target_seq.mean(), target_seq.std()
+            mean, std = log_returns.mean(), log_returns.std()
             y_params.append((mean, std))
             y.append((y_value - mean) / std if std else 0.0)
 
         else:
-            min_val, max_val = target_seq.min(), target_seq.max()
+            min_val, max_val = log_returns.min(), log_returns.max()
             rng = max_val - min_val
             y_params.append((min_val, max_val))
             y.append((y_value - min_val) / rng if rng else 0.0)
