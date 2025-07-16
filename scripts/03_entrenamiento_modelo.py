@@ -14,6 +14,7 @@ from src.config import (
     DATA_PATH,
     WINDOW_SIZE,
     MODEL_TYPE,
+    TRAIN_END,
     VALIDATION_START,
     VALIDATION_END,
     TARGET_SCALER,
@@ -44,25 +45,33 @@ dates = df.index[WINDOW_SIZE:]
 val_mask = (dates >= pd.to_datetime(VALIDATION_START)) & (dates <= pd.to_datetime(VALIDATION_END))
 
 train_dates = (dates < pd.to_datetime(VALIDATION_START))
+validation_dates = (dates >= pd.to_datetime(VALIDATION_START)) & (dates <= pd.to_datetime(VALIDATION_END))
 
 model_type = MODEL_TYPE.lower()
+
 if model_type == "arima":
     # Crear una serie temporal univariante de entrenamiento basada en la target column
-    series = df[TARGET_COLUMN].iloc[WINDOW_SIZE:][train_dates]
-    series.index = pd.date_range(start=series.index[0], periods=len(series), freq='B')
-    model_path = train_model("arima", series)
+    train_series = df[TARGET_COLUMN].iloc[WINDOW_SIZE:][train_dates]
+    train_series.index = pd.date_range(start=train_series.index[0], periods=len(train_series), freq='B')
+    model_path = train_model("arima", train_series)
+    validation_series = df.loc[validation_dates, TARGET_COLUMN]
+    model = load(model_path)
+    preds = model.predict(validation_series)
+    real = validation_series
+
 elif model_type == "prophet":
     prophet_df = df[[TARGET_COLUMN]].iloc[WINDOW_SIZE:][train_dates].copy()
     prophet_df = prophet_df.reset_index().rename(columns={"index": "ds", TARGET_COLUMN: "y"})
     model_path = train_model("prophet", prophet_df)
+    model = load(model_path)
+    preds = model.predict(X_val)
+    real = y_val
 else:
     model_path = train_model(model_type, X_train, y_train, X_val, y_val)
-
-model = load(model_path)
-preds = model.predict(X_val)
-
-real = np.array([denormalize_value(v, p, method=TARGET_SCALER) for v, p in zip(y_val, params_val)])
-preds = np.array([denormalize_value(v, p, method=TARGET_SCALER) for v, p in zip(preds, params_val)])
+    model = load(model_path)
+    preds = model.predict(X_val)
+    real = np.array([denormalize_value(v, p, method=TARGET_SCALER) for v, p in zip(y_val, params_val)])
+    preds = np.array([denormalize_value(v, p, method=TARGET_SCALER) for v, p in zip(preds, params_val)])
 
 mae, rmse = calculate_all_metrics(real, preds)
 print(f"MAE: {mae}\nRMSE: {rmse}")

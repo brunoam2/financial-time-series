@@ -14,7 +14,7 @@ TEST_END = "2024-12-31"
 
 # ===================== Configuración del experimento =====================
 WINDOW_SIZE = 20
-MODEL_TYPE = "prophet" 
+MODEL_TYPE = "arima" 
 SEED = 42
 
 # ===================== Configuración de entrenamiento =====================
