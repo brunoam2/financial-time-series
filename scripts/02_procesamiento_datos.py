@@ -6,7 +6,18 @@ import sys
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.append(str(PROJECT_ROOT))
 
-from src.config import DATA_PATH, PROCESSED_DATA_PATH, WINDOW_SIZE, TRAIN_START, VALIDATION_START, TEST_START, TEST_END
+from src.config import (
+    DATA_PATH,
+    PROCESSED_DATA_PATH,
+    WINDOW_SIZE,
+    TRAIN_START,
+    TRAIN_END,
+    VALIDATION_START,
+    TEST_START,
+    TEST_END,
+    SELECTED_FEATURES,
+    NORMALIZATION_METHOD,
+)
 from src.utils.preprocessing import create_sliding_windows
 
 
@@ -19,14 +30,19 @@ for column in volume_columns:
     combined_data[column] = np.log1p(combined_data[column])
 
 # Crear ventanas deslizantes
-X, y, y_params = create_sliding_windows(combined_data, window_size=WINDOW_SIZE)
+X, y, y_params = create_sliding_windows(
+    combined_data,
+    window_size=WINDOW_SIZE,
+    normalization_method=NORMALIZATION_METHOD,
+    exclude_columns=SELECTED_FEATURES,
+)
 
 # Extraer índice temporal para filtrado
 dates = combined_data.index[WINDOW_SIZE:]  # una fecha por cada valor y
 
 # Dividir por conjuntos usando fechas
-train_mask = (dates >= TRAIN_START) & (dates < VALIDATION_START)
-val_mask = (dates >= VALIDATION_START) & (dates < TEST_START)
+train_mask = (dates >= TRAIN_START) & (dates <= TRAIN_END)
+val_mask = (dates > TRAIN_END) & (dates < TEST_START)
 test_mask = (dates >= TEST_START) & (dates <= TEST_END)
 
 X_train, y_train, y_train_params = X[train_mask], y[train_mask], [y_params[i] for i in range(len(train_mask)) if train_mask[i]]

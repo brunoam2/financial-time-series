@@ -45,9 +45,18 @@ def denormalize_value(normalized_value: float, scaler_parameters: tuple, method:
     else:
         raise ValueError(f"Método de normalización no soportado: {method}")
 
-def create_sliding_windows(dataframe: pd.DataFrame, window_size: int, normalization_method: str = "standard") -> tuple[np.ndarray, np.ndarray, list[tuple[float, float]]]:
-    """Genera secuencias de entrada (X) y etiquetas (y) a partir de un DataFrame utilizando una ventana deslizante,
-    normalizando cada ventana por separado para evitar data leakage"""
+def create_sliding_windows(
+    dataframe: pd.DataFrame,
+    window_size: int,
+    normalization_method: str = "standard",
+    exclude_columns: list[str] | None = None,
+) -> tuple[np.ndarray, np.ndarray, list[tuple[float, float]]]:
+    """Genera secuencias de entrada ``X`` y etiquetas ``y`` mediante una ventana
+    deslizante. Cada ventana se normaliza de forma independiente para evitar
+    *data leakage*.
+
+    El argumento ``exclude_columns`` permite descartar columnas antes de crear
+    las ventanas, por ejemplo para entrenar con solo variables exógenas."""
     if window_size <= 0 or len(dataframe) <= window_size:
         raise ValueError("El tamaño de ventana debe ser positivo y menor que el número de filas del DataFrame.")
 
@@ -55,9 +64,12 @@ def create_sliding_windows(dataframe: pd.DataFrame, window_size: int, normalizat
     target_values = []
     target_scaling_parameters = []
 
+    exclude_columns = exclude_columns or []
+
     for start_index in range(len(dataframe) - window_size):
         end_index = start_index + window_size
-        window_data = dataframe.iloc[start_index:end_index].copy()
+        window_raw = dataframe.iloc[start_index:end_index]
+        window_data = window_raw.drop(columns=exclude_columns, errors="ignore").copy()
         target_value = dataframe[TARGET_COLUMN].iloc[end_index]
 
         # Selección de columnas por tipo
@@ -90,11 +102,13 @@ def create_sliding_windows(dataframe: pd.DataFrame, window_size: int, normalizat
             normalized_window[technical_columns] = normalized_tech
             
 
-        # Extraer y guardar solo los parámetros del target
-        if TARGET_COLUMN not in normalization_params:
-            raise ValueError(f"No se encontraron parámetros de normalización para {TARGET_COLUMN}.")
-
-        target_parameters = normalization_params[TARGET_COLUMN]
+        # Calcular parámetros de normalización del objetivo usando la ventana
+        target_slice = window_raw[[TARGET_COLUMN]]
+        _, target_params_dict = normalize_dataframe_columns(
+            target_slice,
+            method="minmax" if TARGET_SCALER == "minmax" else "standard",
+        )
+        target_parameters = target_params_dict[TARGET_COLUMN]
         target_normalized = normalize_value(target_value, target_parameters, TARGET_SCALER)
 
         features_sequences.append(normalized_window.values)
