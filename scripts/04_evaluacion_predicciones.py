@@ -29,23 +29,30 @@ def main() -> None:
 
     for pred_file in prediction_files:
         df = pd.read_csv(pred_file)
-        if "real" not in df.columns or "predicted" not in df.columns:
-            print(f"Omitiendo {pred_file.name} por falta de columnas necesarias.")
-            continue
         model_name = pred_file.stem.split("_")[0]
         df["date"] = pd.to_datetime(df["date"])
         df.set_index("date", inplace=True)
-        real_series = df["real"]
-        pred_series = df["predicted"]
 
-        mae = calculate_mean_absolute_error(real_series.values, pred_series.values)
-        rmse = calculate_root_mean_squared_error(real_series.values, pred_series.values)
-        mape = calculate_mean_absolute_percentage_error(real_series.values, pred_series.values)
+        if "real" in df.columns and "predicted" in df.columns:
+            real_df = df[["real"]]
+            pred_df = df[["predicted"]]
+        else:
+            real_cols = [c for c in df.columns if c.startswith("real_")]
+            pred_cols = [c for c in df.columns if c.startswith("pred_")]
+            if not real_cols or not pred_cols:
+                print(f"Omitiendo {pred_file.name} por falta de columnas necesarias.")
+                continue
+            real_df = df[real_cols]
+            pred_df = df[pred_cols]
+
+        mae = calculate_mean_absolute_error(real_df.values, pred_df.values)
+        rmse = calculate_root_mean_squared_error(real_df.values, pred_df.values)
+        mape = calculate_mean_absolute_percentage_error(real_df.values, pred_df.values)
 
         metrics.append({"Model": model_name, "MAE": mae, "RMSE": rmse, "MAPE": mape})
 
         fig_path = FIGURES_PATH / f"{model_name}_vs_real.png"
-        save_actual_vs_predicted(real_series, pred_series, fig_path, title=f"{model_name} vs Real")
+        save_actual_vs_predicted(real_df, pred_df, fig_path, title=f"{model_name} vs Real")
 
     if not metrics:
         print("No se encontraron predicciones válidas para evaluar.")

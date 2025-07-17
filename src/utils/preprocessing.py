@@ -58,7 +58,7 @@ def create_sliding_windows(
 
     El argumento ``exclude_columns`` permite descartar columnas antes de crear
     las ventanas, por ejemplo para entrenar con solo variables exógenas."""
-    if window_size <= 0 or len(dataframe) <= window_size + horizon - 1:
+    if window_size <= 0 or len(dataframe) <= window_size + (horizon if horizon > 1 else 0):
         raise ValueError(
             "El tamaño de ventana y el horizonte deben ser válidos para el número de filas del DataFrame."
         )
@@ -69,12 +69,19 @@ def create_sliding_windows(
 
     exclude_columns = exclude_columns or []
 
-    for start_index in range(len(dataframe) - window_size - horizon + 1):
+    max_start = len(dataframe) - window_size - (0 if horizon == 1 else horizon)
+
+    for start_index in range(max_start):
         end_index = start_index + window_size
-        target_index = end_index + horizon - 1
         window_raw = dataframe.iloc[start_index:end_index]
         window_data = window_raw.drop(columns=exclude_columns, errors="ignore").copy()
-        target_value = dataframe[TARGET_COLUMN].iloc[target_index]
+
+        if horizon == 1:
+            target_values_raw = [dataframe[TARGET_COLUMN].iloc[end_index]]
+        else:
+            target_values_raw = dataframe[TARGET_COLUMN].iloc[
+                end_index + 1 : end_index + horizon + 1
+            ].tolist()
 
         # Selección de columnas por tipo
         return_columns = [col for col in window_data.columns if "Return" in col]
@@ -113,7 +120,16 @@ def create_sliding_windows(
             method="minmax" if TARGET_SCALER == "minmax" else "standard",
         )
         target_parameters = target_params_dict[TARGET_COLUMN]
-        target_normalized = normalize_value(target_value, target_parameters, TARGET_SCALER)
+
+        if horizon == 1:
+            target_normalized = normalize_value(
+                target_values_raw[0], target_parameters, TARGET_SCALER
+            )
+        else:
+            target_normalized = [
+                normalize_value(v, target_parameters, TARGET_SCALER)
+                for v in target_values_raw
+            ]
 
         features_sequences.append(normalized_window.values)
         target_values.append(target_normalized)
