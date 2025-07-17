@@ -1,14 +1,20 @@
 import numpy as np
 from xgboost import XGBRegressor
+from sklearn.multioutput import MultiOutputRegressor
 from src.config import EARLY_STOPPING_PATIENCE
 
 
 class XGBoostModel:
-    """Modelo XGBoost entrenado sobre ventanas deslizantes."""
+    """Modelo XGBoost entrenado sobre ventanas deslizantes con soporte multi-horizonte."""
 
-    def __init__(self, input_shape: tuple) -> None:
+    def __init__(self, input_shape: tuple, horizon: int = 1) -> None:
         self.window_size, self.n_features = input_shape
-        self.model = XGBRegressor(objective="reg:squarederror")
+        self.horizon = horizon
+        base_model = XGBRegressor(objective="reg:squarederror")
+        if horizon == 1:
+            self.model = base_model
+        else:
+            self.model = MultiOutputRegressor(base_model)
 
     def _reshape(self, X):
         return X.reshape(X.shape[0], -1)
@@ -29,5 +35,9 @@ class XGBoostModel:
             **kwargs,
         )
 
-    def predict(self, X: np.ndarray) -> np.ndarray:
-        return self.model.predict(self._reshape(X))
+    def predict(self, X: np.ndarray, horizon: int | None = None) -> np.ndarray:
+        horizon = horizon or self.horizon
+        preds = self.model.predict(self._reshape(X))
+        if horizon == 1:
+            return preds.flatten()
+        return preds

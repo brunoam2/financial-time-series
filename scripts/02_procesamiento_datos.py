@@ -40,7 +40,10 @@ X, y, y_params = create_sliding_windows(
 )
 
 # Extraer índice temporal para filtrado
-dates = combined_data.index[WINDOW_SIZE + HORIZON - 1 :]
+if HORIZON == 1:
+    dates = combined_data.index[WINDOW_SIZE:]
+else:
+    dates = combined_data.index[WINDOW_SIZE + HORIZON:]
 
 # Dividir por conjuntos usando fechas
 train_mask = (dates >= TRAIN_START) & (dates <= TRAIN_END)

@@ -6,14 +6,15 @@ from src.config import EARLY_STOPPING_PATIENCE, EARLY_STOPPING_MIN_DELTA
 
 
 class LSTMModel:
-    """Modelo LSTM sencillo para series temporales."""
+    """Modelo LSTM sencillo para series temporales con soporte multi-horizonte."""
 
-    def __init__(self, input_shape: tuple) -> None:
+    def __init__(self, input_shape: tuple, horizon: int = 1) -> None:
+        self.horizon = horizon
         self.model = Sequential(
             [
                 Input(shape=input_shape),
                 LSTM(50),
-                Dense(1)
+                Dense(horizon)
             ]
         )
         self.model.compile(optimizer=Adam(), loss="mse")
@@ -45,7 +46,10 @@ class LSTMModel:
             verbose=1,
         )
 
-    def predict(self, X):
+    def predict(self, X, horizon: int | None = None):
         """Genera predicciones utilizando el modelo entrenado."""
+        horizon = horizon or self.horizon
         predictions = self.model.predict(X, verbose=1)
-        return predictions.flatten()
+        if horizon == 1:
+            return predictions.flatten()
+        return predictions

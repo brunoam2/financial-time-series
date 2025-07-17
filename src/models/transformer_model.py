@@ -6,13 +6,17 @@ from src.config import EARLY_STOPPING_PATIENCE, EARLY_STOPPING_MIN_DELTA
 
 
 class TransformerModel:
-    """Implementación simple de un Transformer para series temporales."""
+    """Implementación simple de un Transformer para series temporales.
 
-    def __init__(self, input_shape: tuple) -> None:
+    Permite generar múltiples pasos de predicción.
+    """
+
+    def __init__(self, input_shape: tuple, horizon: int = 1) -> None:
+        self.horizon = horizon
         inputs = Input(shape=input_shape)
         x = MultiHeadAttention(num_heads=2, key_dim=input_shape[-1])(inputs, inputs)
         x = GlobalAveragePooling1D()(x)
-        outputs = Dense(1)(x)
+        outputs = Dense(horizon)(x)
         self.model = Model(inputs, outputs)
         self.model.compile(optimizer=Adam(), loss="mse")
 
@@ -41,6 +45,9 @@ class TransformerModel:
             verbose=1,
         )
 
-    def predict(self, X):
+    def predict(self, X, horizon: int | None = None):
         predictions = self.model.predict(X, verbose=1)
-        return predictions.flatten()
+        horizon = horizon or self.horizon
+        if horizon == 1:
+            return predictions.flatten()
+        return predictions
