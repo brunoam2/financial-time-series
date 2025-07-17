@@ -15,7 +15,7 @@ TEST_END = "2024-12-31"
 # ===================== Configuración del experimento =====================
 WINDOW_SIZE = 20
 HORIZON = 1
-MODEL_TYPE = "arima"
+MODEL_TYPE = "lstm"
 SEED = 42
 
 # Características seleccionadas para el entrenamiento. Si se deja en ``None``
