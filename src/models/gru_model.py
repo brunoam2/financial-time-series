@@ -1,6 +1,6 @@
 from keras.callbacks import EarlyStopping
 from keras.models import Sequential
-from keras.layers import Input, GRU, Dense
+from keras.layers import Input, GRU, Dense, Dropout
 from keras.optimizers import Adam
 from src.config import EARLY_STOPPING_PATIENCE, EARLY_STOPPING_MIN_DELTA
 
@@ -10,14 +10,14 @@ class GRUModel:
 
     def __init__(self, input_shape: tuple, horizon: int = 1) -> None:
         self.horizon = horizon
-        self.model = Sequential(
-            [
-                Input(shape=input_shape),
-                GRU(50),
-                Dense(horizon)
-            ]
-        )
-        self.model.compile(optimizer=Adam(), loss="mse")
+        self.model = Sequential([
+            Input(shape=input_shape),
+            GRU(64, return_sequences=True),
+            Dropout(0.2),
+            GRU(32),
+            Dense(horizon),
+        ])
+        self.model.compile(optimizer=Adam(learning_rate=0.001), loss="mse")
 
     def fit(
         self,

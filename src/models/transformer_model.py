@@ -1,6 +1,12 @@
 from keras.callbacks import EarlyStopping
 from keras.models import Model
-from keras.layers import Input, Dense, MultiHeadAttention, GlobalAveragePooling1D
+from keras.layers import (
+    Input,
+    Dense,
+    MultiHeadAttention,
+    GlobalAveragePooling1D,
+    Dropout,
+)
 from keras.optimizers import Adam
 from src.config import EARLY_STOPPING_PATIENCE, EARLY_STOPPING_MIN_DELTA
 
@@ -15,10 +21,12 @@ class TransformerModel:
         self.horizon = horizon
         inputs = Input(shape=input_shape)
         x = MultiHeadAttention(num_heads=2, key_dim=input_shape[-1])(inputs, inputs)
+        x = Dropout(0.1)(x)
         x = GlobalAveragePooling1D()(x)
+        x = Dense(64, activation="relu")(x)
         outputs = Dense(horizon)(x)
         self.model = Model(inputs, outputs)
-        self.model.compile(optimizer=Adam(), loss="mse")
+        self.model.compile(optimizer=Adam(learning_rate=0.001), loss="mse")
 
     def fit(
         self,
