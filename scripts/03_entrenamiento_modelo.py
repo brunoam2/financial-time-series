@@ -50,29 +50,11 @@ validation_dates = (dates >= pd.to_datetime(VALIDATION_START)) & (dates <= pd.to
 
 model_type = MODEL_TYPE.lower()
 
-if model_type == "arima":
-    # Serie temporal de entrenamiento basada en la columna objetivo
-    train_series = df[TARGET_COLUMN].iloc[WINDOW_SIZE + HORIZON - 1 :][train_dates]
-    model_path = train_model("arima", train_series)
-    validation_series = df.loc[validation_dates, TARGET_COLUMN]
-    model = load(model_path)
-    preds = model.predict(len(validation_series))
-    real = validation_series
-
-elif model_type == "prophet":
-    prophet_df = df[[TARGET_COLUMN]].iloc[WINDOW_SIZE + HORIZON - 1 :][train_dates].copy()
-    prophet_df = prophet_df.reset_index().rename(columns={"index": "ds", TARGET_COLUMN: "y"})
-    model_path = train_model("prophet", prophet_df)
-    validation_series = df.loc[validation_dates, TARGET_COLUMN]
-    model = load(model_path)
-    preds = model.predict(len(validation_series))
-    real = validation_series
-else:
-    model_path = train_model(model_type, X_train, y_train, X_val, y_val)
-    model = load(model_path)
-    preds = model.predict(X_val)
-    real = np.array([denormalize_value(v, p, method=TARGET_SCALER) for v, p in zip(y_val, params_val)])
-    preds = np.array([denormalize_value(v, p, method=TARGET_SCALER) for v, p in zip(preds, params_val)])
+model_path = train_model(model_type, X_train, y_train, X_val, y_val)
+model = load(model_path)
+preds = model.predict(X_val)
+real = np.array([denormalize_value(v, p, method=TARGET_SCALER) for v, p in zip(y_val, params_val)])
+preds = np.array([denormalize_value(v, p, method=TARGET_SCALER) for v, p in zip(preds, params_val)])
 
 mae, rmse = calculate_all_metrics(real, preds)
 print(f"MAE: {mae}\nRMSE: {rmse}")
