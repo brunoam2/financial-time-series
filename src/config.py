@@ -1,7 +1,7 @@
 from pathlib import Path
 
 # ===================== Configuración de los activos =====================
-TICKERS = ["SPY", "GLD", "TLT", "^VIX", "DX-Y.NYB"]
+TICKERS = ["SPY", "GLD", "TLT"]
 TARGET_COLUMN = "SPY_Close"
 
 # ===================== Configuración de fechas =====================
@@ -13,8 +13,8 @@ TEST_START = "2023-01-01"
 TEST_END = "2024-12-31"
 
 # ===================== Configuración del experimento =====================
-WINDOW_SIZE = 20
-HORIZON = 1
+WINDOW_SIZE = 60
+HORIZON = 15
 MODEL_TYPE = "lstm"
 SEED = 42
 
@@ -22,12 +22,8 @@ SEED = 42
 # se utilizan todas las columnas disponibles en los datos procesados.
 FEATURES_TO_EXCLUDE: list[str] | None = None
 
-# Método de normalización global para ``create_sliding_windows``. Actualmente
-# solo se admite "standard" o "minmax".
-NORMALIZATION_METHOD = "standard"
-
 # ===================== Configuración de entrenamiento =====================
-EARLY_STOPPING_PATIENCE = 10
+EARLY_STOPPING_PATIENCE = 20
 EARLY_STOPPING_MIN_DELTA = 0.0
 
 # ===================== Parámetros para indicadores técnicos =====================
@@ -49,11 +45,6 @@ PREDICTIONS_PATH = RESULTS_PATH / "predictions"
 METRICS_PATH = RESULTS_PATH / "metrics"
 
 # Directorio para modelos entrenados
-
-MODEL_PATH = RESULTS_PATH / "models"
-
-# ===================== Escalado de la variable objetivo =====================
-# Si la variable objetivo termina en 'Close', se utiliza min-max. Si no, se usa estándar.
-TARGET_SCALER = "minmax" if TARGET_COLUMN.endswith("Close") else "standard"
+MODEL_PATH = RESULTS_PATH / "trained_models"
 
 

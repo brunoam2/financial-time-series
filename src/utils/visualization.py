@@ -4,30 +4,25 @@ from pathlib import Path
 
 
 def plot_actual_vs_predicted(actual_values: pd.Series | pd.DataFrame, predicted_values: pd.Series | pd.DataFrame, title: str = "") -> None:
-    """Grafica valores reales vs predichos.
-
-    Si ``predicted_values`` contiene múltiples horizontes (columnas), se genera
-    una subgráfica por cada paso de predicción.
-    """
     actual = pd.DataFrame(actual_values)
     predicted = pd.DataFrame(predicted_values)
 
-    n_steps = predicted.shape[1]
+    # Aplanar y resetear índice para graficar como series combinadas
+    actual_flat = actual.values.flatten()
+    predicted_flat = predicted.values.flatten()
 
-    fig, axes = plt.subplots(n_steps, 1, figsize=(10, 4 * n_steps))
-    if n_steps == 1:
-        axes = [axes]
+    # Crear índice temporal unificado
+    index = range(len(actual_flat))
 
-    for idx, ax in enumerate(axes):
-        step_col = predicted.columns[idx]
-        ax.plot(actual.index, actual.iloc[:, idx if idx < actual.shape[1] else 0], label="Real", linewidth=2)
-        ax.plot(predicted.index, predicted[step_col], label="Predicho", linestyle="--")
-        step_title = f"Paso {idx + 1}" if n_steps > 1 else ""
-        ax.set_title(f"{title} {step_title}".strip())
-        ax.set_xlabel("Índice temporal")
-        ax.set_ylabel("Valor")
-        ax.legend()
-        ax.grid(True)
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.plot(index, actual_flat, label="Real", linewidth=2)
+    ax.plot(index, predicted_flat, label="Predicho", linestyle="--")
+
+    ax.set_title(title)
+    ax.set_xlabel("Índice temporal")
+    ax.set_ylabel("Valor")
+    ax.legend()
+    ax.grid(True)
 
     fig.tight_layout()
     plt.show()
@@ -51,25 +46,23 @@ def save_actual_vs_predicted(
     output_path: Path | str,
     title: str = "",
 ) -> None:
-    """Guarda la gráfica de valores reales vs predichos en ``output_path``."""
     actual = pd.DataFrame(actual_values)
     predicted = pd.DataFrame(predicted_values)
-    n_steps = predicted.shape[1]
 
-    fig, axes = plt.subplots(n_steps, 1, figsize=(10, 4 * n_steps))
-    if n_steps == 1:
-        axes = [axes]
+    actual_flat = actual.values.flatten()
+    predicted_flat = predicted.values.flatten()
 
-    for idx, ax in enumerate(axes):
-        step_col = predicted.columns[idx]
-        ax.plot(actual.index, actual.iloc[:, idx if idx < actual.shape[1] else 0], label="Real", linewidth=2)
-        ax.plot(predicted.index, predicted[step_col], label="Predicho", linestyle="--")
-        step_title = f"Paso {idx + 1}" if n_steps > 1 else ""
-        ax.set_title(f"{title} {step_title}".strip())
-        ax.set_xlabel("Índice temporal")
-        ax.set_ylabel("Valor")
-        ax.legend()
-        ax.grid(True)
+    index = range(len(actual_flat))
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.plot(index, actual_flat, label="Real", linewidth=2)
+    ax.plot(index, predicted_flat, label="Predicho", linestyle="--")
+
+    ax.set_title(title)
+    ax.set_xlabel("Índice temporal")
+    ax.set_ylabel("Valor")
+    ax.legend()
+    ax.grid(True)
 
     fig.tight_layout()
     fig.savefig(output_path)
@@ -90,3 +83,28 @@ def plot_metrics_comparison(
     plt.tight_layout()
     plt.savefig(output_path)
     plt.close()
+
+
+def plot_combined_diagnostics(
+    actual_values: pd.Series | pd.DataFrame,
+    predicted_values: pd.Series | pd.DataFrame,
+    residuals: pd.Series,
+    title: str = "",
+) -> None:
+    """Realiza gráficos combinados de valores reales vs predichos y residuos."""
+    plot_actual_vs_predicted(actual_values, predicted_values, title=title)
+    plot_residuals(residuals, title=f"Residuos - {title}" if title else "Residuos del modelo")
+
+
+def plot_error_by_horizon_step(actual_values, predicted_values, metric_fn, title="Error por paso de horizonte"):
+    actual = pd.DataFrame(actual_values)
+    predicted = pd.DataFrame(predicted_values)
+    errors = [metric_fn(actual.iloc[:, i], predicted.iloc[:, i]) for i in range(predicted.shape[1])]
+    plt.figure(figsize=(10, 4))
+    plt.bar(range(1, len(errors) + 1), errors)
+    plt.title(title)
+    plt.xlabel("Paso")
+    plt.ylabel("Error")
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()

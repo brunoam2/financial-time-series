@@ -3,7 +3,7 @@ import pandas as pd
 from src.config import SHORT_WINDOW, LONG_WINDOW
 
 
-def compute_all_technical_indicators(df: pd.DataFrame, tickers: list[str]) -> pd.DataFrame:
+def compute_technical_indicators(df: pd.DataFrame, tickers: list[str]) -> pd.DataFrame:
     """Calcula todos los indicadores técnicos para múltiples tickers."""
     indicators = pd.DataFrame(index=df.index)
     for ticker in tickers:

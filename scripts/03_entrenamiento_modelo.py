@@ -11,77 +11,68 @@ sys.path.append(str(PROJECT_ROOT))
 
 from src.config import (
     PROCESSED_DATA_PATH,
-    DATA_PATH,
-    WINDOW_SIZE,
     HORIZON,
     MODEL_TYPE,
-    TRAIN_END,
-    VALIDATION_START,
-    VALIDATION_END,
-    TARGET_SCALER,
     PREDICTIONS_PATH,
     SEED,
     TARGET_COLUMN,
 )
-from src.utils.preprocessing import denormalize_value
+
 from src.pipeline.train import train_model
+from src.utils.preprocessing import denormalize_values
 from src.utils.metrics import calculate_all_metrics
 from src.utils.visualization import plot_actual_vs_predicted, plot_residuals
 
-# Ejemplo de uso con horizonte de varios días:
-# establece ``HORIZON = 7`` en ``src/config.py`` para entrenar un modelo que
-# prediga los próximos 7 días.
 random.seed(SEED)
 np.random.seed(SEED)
 
 # Load processed data
-X_train = np.load(PROCESSED_DATA_PATH / "X_train.npy")
-X_val = np.load(PROCESSED_DATA_PATH / "X_val.npy")
-y_train = np.load(PROCESSED_DATA_PATH / "y_train.npy")
-y_val = np.load(PROCESSED_DATA_PATH / "y_val.npy")
+X = np.load(PROCESSED_DATA_PATH / "X.npy")
+y = np.load(PROCESSED_DATA_PATH / "y.npy")
+y_params = np.load(PROCESSED_DATA_PATH / "y_params.npy")
 
-with open(PROCESSED_DATA_PATH / "y_val_params.pkl", "rb") as f:
-    params_val = pickle.load(f)
+print(f"X.shape: {X.shape}, y.shape: {y.shape}, y_params.shape: {y_params.shape}")
 
-# Load dates for validation set
-df = pd.read_csv( DATA_PATH / "combined_data.csv", index_col=0, parse_dates=True)
-if HORIZON == 1:
-    dates = df.index[WINDOW_SIZE:]
-else:
-    dates = df.index[WINDOW_SIZE + HORIZON:]
-val_mask = (dates >= pd.to_datetime(VALIDATION_START)) & (dates <= pd.to_datetime(VALIDATION_END))
+# Verificar que el horizonte de y coincide con el configurado
+real_horizon = y.shape[1]  # número de pasos de predicción por muestra
 
-train_dates = (dates < pd.to_datetime(VALIDATION_START))
-validation_dates = (dates >= pd.to_datetime(VALIDATION_START)) & (dates <= pd.to_datetime(VALIDATION_END))
+if real_horizon != HORIZON:
+    raise ValueError(f"Los datos de y tienen un horizonte de {real_horizon}, pero se esperaba {HORIZON}.")
+
+X_train = X[:-1]
+y_train = y[:-1]
+X_test = X[-1:]
+y_test = y[-1:]
+params_test = y_params[-1:]
 
 model_type = MODEL_TYPE.lower()
 
-model_path = train_model(model_type, X_train, y_train, X_val, y_val, horizon=HORIZON)
+model_path = train_model(model_type, X_train, y_train, X_test, y_test, horizon=HORIZON)
 model = load(model_path)
-preds = model.predict(X_val, horizon=HORIZON)
+preds = model.predict(X_test, horizon=HORIZON)
 
-def _denorm(array, params_list):
-    output = []
-    for arr, p in zip(array, params_list):
-        if np.ndim(arr) == 0:
-            output.append(denormalize_value(arr.item(), p, method=TARGET_SCALER))
-        else:
-            output.append([denormalize_value(v, p, method=TARGET_SCALER) for v in arr])
-    return np.array(output)
+real = np.array([denormalize_values(y, p) for y, p in zip(y_test, params_test)])
+preds = np.array([denormalize_values(y, p) for y, p in zip(preds, params_test)])
 
-real = _denorm(y_val, params_val)
-preds = _denorm(preds, params_val)
+print(f"Adjusted real.shape: {real.shape}, preds.shape: {preds.shape}")
 
-mae, rmse = calculate_all_metrics(real, preds)
-print(f"MAE: {mae}\nRMSE: {rmse}")
+print(f"real.shape: {real.shape}")
+print(f"preds.shape: {preds.shape}")
+print(f"real: {real}")
+print(f"preds: {preds}")
 
-real_df = pd.DataFrame(real, index=dates[val_mask])
-pred_df = pd.DataFrame(preds, index=dates[val_mask])
+real_flat = np.concatenate(real)
+preds_flat = np.concatenate(preds)
+mae, rmse, mape, r2 = calculate_all_metrics(real_flat, preds_flat)
+print(f"MAE: {mae}\nRMSE: {rmse}\nMAPE: {mape}\nR²: {r2}")
+
+real_df = pd.DataFrame(real, index=None)
+pred_df = pd.DataFrame(preds, index=None)
 plot_actual_vs_predicted(real_df, pred_df)
-plot_residuals(pd.Series((real_df - pred_df).values.flatten(), index=dates[val_mask].repeat(pred_df.shape[1])))
+plot_residuals(pd.Series((real_df - pred_df).values.flatten(), index=None))
 
 PREDICTIONS_PATH.mkdir(parents=True, exist_ok=True)
 out_file = PREDICTIONS_PATH / f"{model_type}_{TARGET_COLUMN}.csv"
 pd.concat(
     [real_df.add_prefix("real_"), pred_df.add_prefix("pred_")], axis=1
-).assign(date=dates[val_mask]).to_csv(out_file, index=False)
+).to_csv(out_file, index=False)
