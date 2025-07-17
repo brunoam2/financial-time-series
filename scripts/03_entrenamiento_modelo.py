@@ -13,6 +13,7 @@ from src.config import (
     PROCESSED_DATA_PATH,
     DATA_PATH,
     WINDOW_SIZE,
+    HORIZON,
     MODEL_TYPE,
     TRAIN_END,
     VALIDATION_START,
@@ -41,7 +42,7 @@ with open(PROCESSED_DATA_PATH / "y_val_params.pkl", "rb") as f:
 
 # Load dates for validation set
 df = pd.read_csv( DATA_PATH / "combined_data.csv", index_col=0, parse_dates=True)
-dates = df.index[WINDOW_SIZE:]
+dates = df.index[WINDOW_SIZE + HORIZON - 1 :]
 val_mask = (dates >= pd.to_datetime(VALIDATION_START)) & (dates <= pd.to_datetime(VALIDATION_END))
 
 train_dates = (dates < pd.to_datetime(VALIDATION_START))
@@ -50,17 +51,16 @@ validation_dates = (dates >= pd.to_datetime(VALIDATION_START)) & (dates <= pd.to
 model_type = MODEL_TYPE.lower()
 
 if model_type == "arima":
-    # Crear una serie temporal univariante de entrenamiento basada en la target column
-    train_series = df[TARGET_COLUMN].iloc[WINDOW_SIZE:][train_dates]
-    train_series.index = pd.date_range(start=train_series.index[0], periods=len(train_series), freq='B')
+    # Serie temporal de entrenamiento basada en la columna objetivo
+    train_series = df[TARGET_COLUMN].iloc[WINDOW_SIZE + HORIZON - 1 :][train_dates]
     model_path = train_model("arima", train_series)
     validation_series = df.loc[validation_dates, TARGET_COLUMN]
     model = load(model_path)
-    preds = model.predict(validation_series)
+    preds = model.predict(len(validation_series))
     real = validation_series
 
 elif model_type == "prophet":
-    prophet_df = df[[TARGET_COLUMN]].iloc[WINDOW_SIZE:][train_dates].copy()
+    prophet_df = df[[TARGET_COLUMN]].iloc[WINDOW_SIZE + HORIZON - 1 :][train_dates].copy()
     prophet_df = prophet_df.reset_index().rename(columns={"index": "ds", TARGET_COLUMN: "y"})
     model_path = train_model("prophet", prophet_df)
     validation_series = df.loc[validation_dates, TARGET_COLUMN]

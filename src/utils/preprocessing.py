@@ -48,6 +48,7 @@ def denormalize_value(normalized_value: float, scaler_parameters: tuple, method:
 def create_sliding_windows(
     dataframe: pd.DataFrame,
     window_size: int,
+    horizon: int = 1,
     normalization_method: str = "standard",
     exclude_columns: list[str] | None = None,
 ) -> tuple[np.ndarray, np.ndarray, list[tuple[float, float]]]:
@@ -57,8 +58,10 @@ def create_sliding_windows(
 
     El argumento ``exclude_columns`` permite descartar columnas antes de crear
     las ventanas, por ejemplo para entrenar con solo variables exógenas."""
-    if window_size <= 0 or len(dataframe) <= window_size:
-        raise ValueError("El tamaño de ventana debe ser positivo y menor que el número de filas del DataFrame.")
+    if window_size <= 0 or len(dataframe) <= window_size + horizon - 1:
+        raise ValueError(
+            "El tamaño de ventana y el horizonte deben ser válidos para el número de filas del DataFrame."
+        )
 
     features_sequences = []
     target_values = []
@@ -66,11 +69,12 @@ def create_sliding_windows(
 
     exclude_columns = exclude_columns or []
 
-    for start_index in range(len(dataframe) - window_size):
+    for start_index in range(len(dataframe) - window_size - horizon + 1):
         end_index = start_index + window_size
+        target_index = end_index + horizon - 1
         window_raw = dataframe.iloc[start_index:end_index]
         window_data = window_raw.drop(columns=exclude_columns, errors="ignore").copy()
-        target_value = dataframe[TARGET_COLUMN].iloc[end_index]
+        target_value = dataframe[TARGET_COLUMN].iloc[target_index]
 
         # Selección de columnas por tipo
         return_columns = [col for col in window_data.columns if "Return" in col]
