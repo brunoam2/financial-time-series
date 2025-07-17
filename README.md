@@ -10,3 +10,4 @@ Este proyecto contiene utilidades para descargar datos de activos financieros, p
 4. `scripts/04_evaluacion_predicciones.py` compara las predicciones de todos los modelos almacenados.
 
 Los parámetros principales (ventana, horizonte, selección de columnas, etc.) se configuran en `src/config.py`.
+Desde la versión actual también se incluye un modelo `cnn` basado en convoluciones 1D, además de mejoras en los modelos recurrentes.

@@ -7,6 +7,7 @@ from ..models.lstm_model import LSTMModel
 from ..models.gru_model import GRUModel
 from ..models.transformer_model import TransformerModel
 from ..models.xgboost_model import XGBoostModel
+from ..models.cnn_model import CNNModel
 
 def train_model(model_name: str, X_train, y_train=None, X_val=None, y_val=None, horizon: int = HORIZON) -> Path:
     """Entrena un modelo y guarda el resultado."""
@@ -16,6 +17,7 @@ def train_model(model_name: str, X_train, y_train=None, X_val=None, y_val=None, 
         "gru": GRUModel,
         "transformer": TransformerModel,
         "xgboost": XGBoostModel,
+        "cnn": CNNModel,
     }
 
     if model_name not in model_class_map:
