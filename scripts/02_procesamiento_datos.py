@@ -10,12 +10,13 @@ from src.config import (
     DATA_PATH,
     PROCESSED_DATA_PATH,
     WINDOW_SIZE,
+    HORIZON,
     TRAIN_START,
     TRAIN_END,
     VALIDATION_START,
     TEST_START,
     TEST_END,
-    SELECTED_FEATURES,
+    FEATURES_TO_EXCLUDE,
     NORMALIZATION_METHOD,
 )
 from src.utils.preprocessing import create_sliding_windows
@@ -33,12 +34,13 @@ for column in volume_columns:
 X, y, y_params = create_sliding_windows(
     combined_data,
     window_size=WINDOW_SIZE,
+    horizon=HORIZON,
     normalization_method=NORMALIZATION_METHOD,
-    exclude_columns=SELECTED_FEATURES,
+    exclude_columns=FEATURES_TO_EXCLUDE,
 )
 
 # Extraer índice temporal para filtrado
-dates = combined_data.index[WINDOW_SIZE:]  # una fecha por cada valor y
+dates = combined_data.index[WINDOW_SIZE + HORIZON - 1 :]
 
 # Dividir por conjuntos usando fechas
 train_mask = (dates >= TRAIN_START) & (dates <= TRAIN_END)

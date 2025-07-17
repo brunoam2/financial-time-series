@@ -14,12 +14,13 @@ TEST_END = "2024-12-31"
 
 # ===================== Configuración del experimento =====================
 WINDOW_SIZE = 20
+HORIZON = 1
 MODEL_TYPE = "arima"
 SEED = 42
 
 # Características seleccionadas para el entrenamiento. Si se deja en ``None``
 # se utilizan todas las columnas disponibles en los datos procesados.
-SELECTED_FEATURES: list[str] | None = None
+FEATURES_TO_EXCLUDE: list[str] | None = None
 
 # Método de normalización global para ``create_sliding_windows``. Actualmente
 # solo se admite "standard" o "minmax".
