@@ -7,12 +7,8 @@ TARGET_COLUMN = "SPY_Close"
 # ===================== Configuración de fechas =====================
 # Periodos de entrenamiento y prueba actualizados para utilizar datos más
 # recientes y equilibrar la cantidad de observaciones por conjunto.
-TRAIN_START = "2010-01-01"
-TRAIN_END = "2021-12-31"
-VALIDATION_START = "2022-01-01"
-VALIDATION_END = "2022-12-31"
-TEST_START = "2023-01-01"
-TEST_END = "2024-12-31"
+START = "2010-01-01"
+END = "2024-12-31"
 
 # ===================== Configuración del experimento =====================
 # Longitud de ventana y horizonte ajustados para predicciones de medio plazo.

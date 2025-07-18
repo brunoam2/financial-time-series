@@ -71,8 +71,10 @@ pred_df = pd.DataFrame(preds, index=None)
 plot_actual_vs_predicted(real_df, pred_df)
 plot_residuals(pd.Series((real_df - pred_df).values.flatten(), index=None))
 
-PREDICTIONS_PATH.mkdir(parents=True, exist_ok=True)
-out_file = PREDICTIONS_PATH / f"{model_type}_{TARGET_COLUMN}.csv"
-pd.concat(
-    [real_df.add_prefix("real_"), pred_df.add_prefix("pred_")], axis=1
-).to_csv(out_file, index=False)
+# Guardar predicciones como columnas 'real' y 'pred' con pasos como filas
+comparison_df = pd.DataFrame({
+    'real': real_flat,
+    'pred': preds_flat
+})
+out_file = PREDICTIONS_PATH / f"{model_type}_{TARGET_COLUMN}_w{X.shape[1]}_h{HORIZON}.csv"
+comparison_df.to_csv(out_file, index=False)
