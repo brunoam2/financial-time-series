@@ -72,6 +72,34 @@ def main() -> None:
         metrics.append({"model": model_name, "mae": mae, "rmse": rmse, "mape": mape, "r2": r2})
         predictions.append((model_name, pred))
 
+        # Generar visualizaciones de errores individuales
+        error = real - pred
+        abs_error = abs(error)
+
+        fig, axs = plt.subplots(1, 3, figsize=(15, 4))
+        axs[0].plot(error)
+        axs[0].axhline(0, color="red", linestyle="--")
+        axs[0].set_title(f"Residuos - {model_name}")
+        axs[0].set_xlabel("Paso")
+        axs[0].set_ylabel("Error")
+
+        axs[1].hist(abs_error, bins=20, edgecolor="black")
+        axs[1].set_title(f"Histograma Error Absoluto - {model_name}")
+        axs[1].set_xlabel("Error")
+        axs[1].set_ylabel("Frecuencia")
+
+        axs[2].scatter(real, pred, alpha=0.6)
+        axs[2].plot([real.min(), real.max()], [real.min(), real.max()], 'r--')
+        axs[2].set_title(f"Real vs Predicción - {model_name}")
+        axs[2].set_xlabel("Real")
+        axs[2].set_ylabel("Predicción")
+
+        fig.suptitle(f"Análisis de Errores - {model_name} (w{window} h{horizon})")
+        fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+        fig_error_path = FIGURES_PATH / f"errores_{model_name}_w{window}_h{horizon}.png"
+        plt.savefig(fig_error_path)
+        plt.close()
+
     if not metrics or real_series is None:
         print("No hay predicciones válidas para evaluar.")
         return

@@ -7,14 +7,14 @@ TARGET_COLUMN = "SPY_Close"
 # ===================== Configuración de fechas =====================
 # Periodos de entrenamiento y prueba actualizados para utilizar datos más
 # recientes y equilibrar la cantidad de observaciones por conjunto.
-START = "2010-01-01"
+START = "2007-01-01"
 END = "2024-12-31"
 
 # ===================== Configuración del experimento =====================
 # Longitud de ventana y horizonte ajustados para predicciones de medio plazo.
-WINDOW_SIZE = 90
-HORIZON = 30
-MODEL_TYPE = "lstm"
+WINDOW_SIZE = 250
+HORIZON = 120
+MODEL_TYPE = "gru"
 SEED = 42
 
 # Características seleccionadas para el entrenamiento. Si se deja en ``None``
@@ -27,8 +27,8 @@ EARLY_STOPPING_PATIENCE = 10
 EARLY_STOPPING_MIN_DELTA = 0.001
 
 # ===================== Parámetros para indicadores técnicos =====================
-SHORT_WINDOW = 10
-LONG_WINDOW = 30
+SHORT_WINDOW = 30
+LONG_WINDOW = 120
 
 # ===================== Definición de rutas =====================
 # Ruta base del proyecto
